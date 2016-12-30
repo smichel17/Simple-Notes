@@ -8,6 +8,9 @@ import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import com.simplemobiletools.filepicker.dialogs.ConfirmationDialog
 import com.simplemobiletools.filepicker.extensions.toast
 import com.simplemobiletools.filepicker.extensions.value
@@ -20,14 +23,18 @@ import com.simplemobiletools.notes.dialogs.OpenNoteDialog
 import com.simplemobiletools.notes.dialogs.RenameNoteDialog
 import com.simplemobiletools.notes.extensions.getTextSize
 import com.simplemobiletools.notes.models.Note
+import kotlinx.android.synthetic.main.actionbar_spinner.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.fragment_note.*
 
-class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener {
+class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener, AdapterView.OnItemSelectedListener {
     lateinit var mCurrentNote: Note
     lateinit var mAdapter: NotesPagerAdapter
     lateinit var mDb: DBHelper
     lateinit var mNotes: List<Note>
+
+    private val multipleNotes: Boolean
+        get() = mNotes.size > 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +45,9 @@ class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener {
 
         pager_title_strip.setTextSize(TypedValue.COMPLEX_UNIT_PX, getTextSize())
         pager_title_strip.layoutParams.height = (pager_title_strip.height + resources.getDimension(R.dimen.activity_margin) * 2).toInt()
+
+        val spinview = layoutInflater.inflate(R.layout.actionbar_spinner, null)
+        supportActionBar?.customView = spinview
     }
 
     fun initViewPager() {
@@ -72,21 +82,29 @@ class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        val shouldBeVisible = mNotes.size > 1
         menu.apply {
-            findItem(R.id.rename_note).isVisible = shouldBeVisible
-            findItem(R.id.open_note).isVisible = shouldBeVisible
-            findItem(R.id.delete_note).isVisible = shouldBeVisible
+            findItem(R.id.rename_note).isVisible = multipleNotes
+            /* findItem(R.id.open_note).isVisible = multipleNotes */
+            findItem(R.id.delete_note).isVisible = multipleNotes
         }
 
-        pager_title_strip.visibility = if (shouldBeVisible) View.VISIBLE else View.GONE
+        supportActionBar?.setDisplayShowTitleEnabled(!multipleNotes)
+        supportActionBar?.setDisplayShowCustomEnabled(multipleNotes)
+        pager_title_strip.visibility = if (multipleNotes) View.VISIBLE else View.GONE
+        if (multipleNotes) {
+            val titles = mNotes.map { it.title }
+            val adapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, titles)
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            main_active_note.adapter = adapter
+            main_active_note.onItemSelectedListener = this
+        }
 
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.open_note -> displayOpenNoteDialog()
+            /* R.id.open_note -> displayOpenNoteDialog() */
             R.id.new_note -> displayNewNoteDialog()
             R.id.rename_note -> displayRenameDialog()
             R.id.share -> shareText()
@@ -188,5 +206,14 @@ class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener {
     override fun onPageSelected(position: Int) {
         mCurrentNote = mNotes[position]
         config.currentNoteId = mCurrentNote.id
+        main_active_note.setSelection(position)
+    }
+
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        val note = mNotes[main_active_note.selectedItemPosition]
+        updateSelectedNote(note.id)
+    }
+
+    override fun onNothingSelected(parent: AdapterView<*>?) {
     }
 }
