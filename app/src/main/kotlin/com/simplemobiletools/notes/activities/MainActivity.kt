@@ -97,6 +97,8 @@ class MainActivity : SimpleActivity(), ViewPager.OnPageChangeListener, AdapterVi
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             main_active_note.adapter = adapter
             main_active_note.onItemSelectedListener = this
+            val index = getNoteIndexWithId(mCurrentNote.id)
+            main_active_note.setSelection(index)
         }
 
         return super.onPrepareOptionsMenu(menu)
